@@ -171,6 +171,7 @@ def main():
 
                 # Save chunks and their embeddings
                 save_chunks(db, chunks_text, chunks_meta, model, document_id)
+                print('vse top4ik')
 
     except Exception:
         pass
