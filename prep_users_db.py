@@ -7,7 +7,7 @@ cursor = conn.cursor()
 
 # Создаем таблицу пользователей
 cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-    userID INTEGER UNIQUE PRIMARY KEY AUTOINCREMENT,
+    userID INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     access_level INTEGER DEFAULT 0,
@@ -16,7 +16,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS users (
 
 
 # cursor.execute('''INSERT INTO users (email, password, access_level)
-#                           VALUES (?, ?, ?)''', ('mk', '12345', 2))
+#                           VALUES (?, ?, ?)''', ('test', '12345', 2))
 
 conn.commit()
 conn.close()

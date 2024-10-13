@@ -51,7 +51,7 @@ def get_user_access_level(user_id):
 
     if result:
         return result[0]  # Возвращаем уровень доступа
-    return None  # Если пользователь не найден
+    return None  # Если пользователь не найден или разлогинен
 
 # Декоратор для проверки уровня доступа
 def access_level_required(level):
@@ -60,15 +60,20 @@ def access_level_required(level):
         async def wrapped(message: types.Message, *args, **kwargs):
             user_id = message.from_user.id  # Получаем user_id пользователя
             
-            # Получаем уровень доступа по user_id
+            # Проверяем уровень доступа по user_id
             access_level = get_user_access_level(user_id)
             
-            if access_level is not None and access_level >= level:
+            if access_level is None:
+                await message.answer("Вы не авторизованы. Пожалуйста, войдите в систему.")
+                return
+
+            if access_level >= level:
                 return await func(message, *args, **kwargs)
             else:
                 await message.answer("У вас недостаточно прав для выполнения этой команды.")
         return wrapped
     return decorator
+
 
 # Функция для связывания user_id с email
 def save_user_id_to_db(user_id, email):
@@ -151,6 +156,27 @@ async def process_access_level(message: types.Message, state: FSMContext):
 
     await state.clear()
     
+# Функция для разлогинивания пользователя (удаление userID)
+def logout_user(user_id):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    # Обнуляем поле userID, разлогинивая пользователя
+    cursor.execute('''UPDATE users SET userID = 0 WHERE userID = ?''', (user_id,))
+    conn.commit()
+    conn.close()
+
+# Хендлер для команды logout
+@router.message(Command(commands=['logout']))
+async def handle_logout(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+
+    # Вызываем функцию для разлогинивания пользователя
+    logout_user(user_id)
+
+    await state.clear()
+
+    await message.answer("Вы успешно вышли из системы. Для использования команд авторизуйтесь снова.", reply_markup=auth_kb())
 
 
 # Функция для запроса статистики (доступна только администраторам)
@@ -183,7 +209,6 @@ async def command_start_handler(message: Message) -> None:
 
 @router.message(F.text == '🔐 Авторизация')
 async def auth_user(message: Message, state: FSMContext):
-    ... #logic for auth.
     await message.reply('Введите вашу почту:')
     # Переход в состояние ожидания ввода почты
     await state.set_state(StateMachine.waiting_for_email)
@@ -213,11 +238,11 @@ async def get_password(message: types.Message, state: FSMContext):
         # Сохраняем связку user_id и email в базе данных
         save_user_id_to_db(user_id, email)
 
-        await message.answer("Авторизация успешна! Добро пожаловать в главное меню.", reply_markup=types.ReplyKeyboardRemove())
-        await state.finish()
+        await message.answer("Авторизация успешна! Добро пожаловать в главное меню.", reply_markup=askq_kb())
+        await state.clear()
     else:
         await message.answer("Неверная почта или пароль. Попробуйте ещё раз.")
-        await StateMachine.waiting_for_email.set()
+        await state.set_state(StateMachine.waiting_for_email)
 
 
 # Функция для генерации хеша пароля
@@ -235,7 +260,7 @@ def authenticate_user(email, password):
 
     if user:
         stored_password = user[0]
-        if generate_password_hash(stored_password) == generate_password_hash(password):
+        if (stored_password) == generate_password_hash(password):
             return True
     return False
 
