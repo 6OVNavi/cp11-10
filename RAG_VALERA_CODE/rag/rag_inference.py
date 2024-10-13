@@ -57,6 +57,14 @@ prompt_lia = """
 4. Избегание конфликта: Если запросы пользователя содержат провокационные или неподобающие элементы, вежливо перенаправляйте разговор в более продуктивное русло, фокусируясь на теме запроса.
 """
 
+prompt_summarize = '''
+Проанализируй следующие вопросы и выдели наиболее распространенные проблемы.
+
+Формат вывода:
+1. Представь каждую итоговую проблему, как вопрос, подчеркивающий ее.
+2. Представь получившиеся данные в виде упорядоченного списка.
+'''
+
 client = OpenAI(
     base_url="http://87.242.118.47:8000/v1",
     api_key="token-abc123",
@@ -156,6 +164,34 @@ def ask_question(query: str, db, embedding_model, conversation_history, log_db, 
     log_db.commit()
     
     return response, context, meta_datas, sources
+
+#########
+
+def get_relevant_problems(questions):
+
+    user_prompt = '\n'.join(questions)
+
+    prompt = prompt_summarize + '\n' + user_prompt
+
+    relevant_problems = call_model(prompt, [])
+
+    return relevant_problems.splitlines()
+
+def get_uncertain_questions(problems, db, embedding_model, thr = 0.5):
+
+    need_clarification = []
+
+    for problem in problems:
+        q_data = retrieve_context(retrieve_context(problem, db, embedding_model))
+
+        # pseudo code
+
+        if q_data['distances'][0] < thr:
+            need_clarification.append(problem)
+
+    return need_clarification
+
+#########
 
 def main():
     db = setup_database()
