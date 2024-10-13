@@ -11,7 +11,10 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     access_level INTEGER DEFAULT 0,
-    accessed_docs TEXT DEFAULT, ""
+    region TEXT NOT NULL,
+    department TEXT NOT NULL,
+    position TEXT NOT NULL,
+    accessed_docs TEXT DEFAULT ""
 )''')
 
 

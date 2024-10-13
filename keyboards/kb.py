@@ -26,6 +26,7 @@ def auth_kb() -> ReplyKeyboardMarkup:
 def askq_kb() -> ReplyKeyboardMarkup:
     upload_builder = ReplyKeyboardBuilder()
     upload_builder.row(types.KeyboardButton(text='📄 Задать вопрос'))
+    upload_builder.row(types.KeyboardButton(text='💡 Задать вопрос в креативном режиме')) #🔄
     upload_builder.row(types.KeyboardButton(text='⚙️ Настройки'))
 
     return upload_builder.as_markup(resize_keyboard=True)

@@ -57,6 +57,14 @@ prompt_lia = """
 4. Избегание конфликта: Если запросы пользователя содержат провокационные или неподобающие элементы, вежливо перенаправляйте разговор в более продуктивное русло, фокусируясь на теме запроса.
 """
 
+prompt_summarize = '''
+Проанализируй следующие вопросы и выдели наиболее распространенные проблемы.
+Формат вывода:
+1. Представь каждую итоговую проблему, как вопрос, подчеркивающий ее.
+2. Представь получившиеся данные в виде упорядоченного списка.
+'''
+
+
 client = OpenAI(
     base_url="http://87.242.118.47:8000/v1",
     api_key="token-abc123",
@@ -106,7 +114,7 @@ def retrieve_context(query: str, db, embedding_model, k: int = 5) -> str:
     ).fetchall()
     return "\n\nКонтекст:\n" + "\n-----\n".join([item[2] for item in results]), [item[3] for item in results], [item[4] for item in results]
 
-def call_model(prompt: str, messages=[]):
+def call_model(prompt: str, messages=[], temp=0.2):
     messages.append(
         {
             "role": "user",
@@ -122,7 +130,7 @@ def call_model(prompt: str, messages=[]):
             response = client.chat.completions.create(
                 model="qilowoq/Vikhr-Nemo-12B-Instruct-R-21-09-24-4Bit-GPTQ",
                 messages=messages,
-                temperature=0.2,
+                temperature=temp,
             )
             return response.choices[0].message.content
         except:
@@ -145,7 +153,7 @@ def ask_question(query: str, db, embedding_model, conversation_history, log_db, 
     """)
     conversation_history.append({"role": "user", "content": prompt})
     if len(sources) > 0 or len(query) < 2:
-        response = call_model(prompt, conversation_history)
+        response = call_model(prompt, conversation_history, temp=0.2)
     else:
         response = "Мне очень хочется помочь вам с вашим вопросом, но, к сожалению, я не нашла нужную информацию в предоставленных документах. Возможно, запрос можно переформулировать или уточнить детали, чтобы я могла более точно и эффективно обработать его. Буду рада, если вы подскажете, что именно вас интересует, и я постараюсь найти подходящий ответ!"
     conversation_history.append({"role": "assistant", "content": response})
@@ -156,6 +164,52 @@ def ask_question(query: str, db, embedding_model, conversation_history, log_db, 
     log_db.commit()
     
     return response, context, meta_datas, sources
+
+
+def ask_question_creative(query: str, db, embedding_model, conversation_history, log_db, chat_id) -> str:
+    context, meta_datas, sources = retrieve_context(query, db, embedding_model)
+    prompt = dedent(f"""
+    Используй следующую информацию:
+
+    ```
+    {context}
+    ```
+
+    чтобы креативно ответить на вопрос:
+    {query}
+    """)
+    conversation_history.append({"role": "user", "content": prompt})
+    if len(sources) > 0 or len(query) < 2:
+        response = call_model(prompt, conversation_history, temp=0.5)
+    else:
+        response = "Мне очень хочется помочь вам с вашим вопросом, но, к сожалению, я не нашла нужную информацию в предоставленных документах. Возможно, запрос можно переформулировать или уточнить детали, чтобы я могла более точно и эффективно обработать его. Буду рада, если вы подскажете, что именно вас интересует, и я постараюсь найти подходящий ответ!"
+    conversation_history.append({"role": "assistant", "content": response})
+    
+    # Log the question and answer
+    log_db.execute('INSERT INTO logs (timestamp, chat_id, question, answer, context) VALUES (?, ?, ?, ?, ?)',
+                   (datetime.now().isoformat(), chat_id, query, response, json.dumps(context)))
+    log_db.commit()
+    
+    return response, context, meta_datas, sources
+
+
+#########
+def get_relevant_problems(questions):
+    user_prompt = '\n'.join(questions)
+    prompt = prompt_summarize + '\n' + user_prompt
+    relevant_problems = call_model(prompt, [])
+    return relevant_problems.splitlines()
+def get_uncertain_questions(problems, db, embedding_model, thr = 0.5):
+    need_clarification = []
+    for problem in problems:
+        q_data = retrieve_context(retrieve_context(problem, db, embedding_model))
+        # pseudo code
+        if q_data['distances'][0] < thr:
+            need_clarification.append(problem)
+    return need_clarification
+#########
+
+
 
 def main():
     db = setup_database()
