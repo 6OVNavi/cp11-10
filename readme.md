@@ -6,6 +6,7 @@
 
 Чтобы запустить её на сервере, необходимо:
 1. Установить на него `vllm` - `pip install vllm`
+2. Запустить serving модели: `/path/to/vllm serve --dtype half --max-model-len 32000 -tp 1 qilowoq/Vikhr-Nemo-12B-Instruct-R-21-09-24-4Bit-GPTQ --api-key token-abc123`
 
 ##### Инструкция по запуску бота:
 
