@@ -103,6 +103,8 @@ def save_chunks(db, chunks: List[str], meta_data: List[dict], model, document_id
     try:
         chunk_embeddings = list(model.encode(chunks, normalize_embeddings=True))
         for chunk, embedding, meta in zip(chunks, chunk_embeddings, meta_data):
+            if len(list(meta.values())) < 2:
+                continue
             cursor = db.execute(
                 "INSERT INTO chunks(document_id, text, meta_data_h, meta_data_source) VALUES(?, ?, ?, ?)", 
                 (document_id, chunk, meta.get("header", ""), meta.get("source", ""))

@@ -263,7 +263,7 @@ async def handle_logout(message: types.Message, state: FSMContext):
 # Функция для запроса статистики (доступна только администраторам)
 @router.message(Command(commands=['get_statistics']))
 @access_level_required(3)
-async def get_statistics(message: types.Message):
+async def get_statistics(message: types.Message, state: FSMContext):
     # Логика запроса статистики (например, количество пользователей)
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
@@ -277,15 +277,7 @@ async def get_statistics(message: types.Message):
     conn.close()
 
     await message.answer(f"Всего пользователей: {total_users}\nИз них администраторов: {total_admins}")
-
-
-
-@router.message(Command(commands=['get_stat']))
-@access_level_required(3)
-async def stat_answer(message: Message, state: FSMContext):
-    '''
-    Функция для вопросов по статистике использования сервиса (для админов)
-    '''
+    await message.answer(f"Готовим анализ статистики запросов пользователей..")
 
     conn = sqlite3.connect('/Users/maximmashtaler/Projects/prog/hacks/CP/szfo2024/cp11-10/log.sqlite3')
     cursor = conn.cursor()
@@ -304,7 +296,7 @@ async def stat_answer(message: Message, state: FSMContext):
     {total_questions}
     ```
 
-    ответь на вопрос администратора:
+    развернуто ответь как аналитик на вопрос администратора:
     {query}
     """)
     
@@ -313,6 +305,42 @@ async def stat_answer(message: Message, state: FSMContext):
 
     await message.answer(response, reply_markup=askq_kb())
     await state.clear()
+
+
+
+# @router.message(Command(commands=['get_stat']))
+# @access_level_required(3)
+# async def stat_answer(message: Message, state: FSMContext):
+#     '''
+#     Функция для вопросов по статистике использования сервиса (для админов)
+#     '''
+
+#     conn = sqlite3.connect('/Users/maximmashtaler/Projects/prog/hacks/CP/szfo2024/cp11-10/log.sqlite3')
+#     cursor = conn.cursor()
+
+#     cursor.execute('''SELECT question FROM logs''')
+#     total_questions = cursor.fetchall()
+
+#     print(total_questions)
+
+#     query = 'чем чаще всего интересуются пользователи?'
+
+#     prompt = dedent(f"""
+#     Используя историю вопросов пользователей:
+
+#     ```
+#     {total_questions}
+#     ```
+
+#     ответь на вопрос администратора:
+#     {query}
+#     """)
+    
+
+#     response = call_model(prompt, conversation_history, temp=0.2)
+
+#     await message.answer(response, reply_markup=askq_kb())
+#     await state.clear()
 
     
 
